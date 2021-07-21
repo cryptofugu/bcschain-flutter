@@ -1,0 +1,267 @@
+import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'intro_page.dart';
+import '/src/configuration_service.dart';
+import 'about_page.dart';
+import 'screen_lock_page.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'smart_contracts_page.dart';
+
+enum Type { changePin, touchId, smartContracts, showWIF, showMnemonic, about, logout }
+
+class Settings extends StatefulWidget {
+  @override
+  SettingsState createState() => SettingsState();
+}
+
+
+class SettingsState extends State<Settings> {
+
+  bool _isFingerprintEnabled = false;
+  bool _isLocalAuthAvailable = false;
+
+  _getAuthStatus() async {
+    _isLocalAuthAvailable = await LocalAuthentication().isDeviceSupported();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getAuthStatus();
+    _getFingerprint().whenComplete((){
+      setState(() {});
+    });
+  }
+
+  Widget build(BuildContext context) {
+    FocusScope.of(context).unfocus();
+    return Center(
+      child: Column(
+        children: [
+          _tile(context, AppLocalizations.of(context)!.changePIN, Icons.password, Type.changePin),
+          if (_isLocalAuthAvailable) Divider(),
+          if (_isLocalAuthAvailable) Row(
+            children: <Widget>[
+              Expanded(
+                child: _tile(context, AppLocalizations.of(context)!.touchID, Icons.fingerprint, Type.touchId),
+              ),
+              Switch(
+                value: _isFingerprintEnabled,
+                activeColor: Color(0xffbb9f89),
+                onChanged: (value) {
+                  _setFingerprint(value);
+                  setState(() {
+                    _isFingerprintEnabled = value;
+                  });
+                }
+              ),
+            ],
+          ),
+          Divider(),
+          _tile(context, AppLocalizations.of(context)!.smartContracts, Icons.assignment, Type.smartContracts),
+          Divider(),
+          _tile(context, AppLocalizations.of(context)!.showWif, Icons.vpn_key, Type.showWIF),
+          Divider(),
+          _tile(context, AppLocalizations.of(context)!.showMnemonic, Icons.format_color_text, Type.showMnemonic),
+          Divider(),
+          _tile(context, AppLocalizations.of(context)!.about, Icons.info, Type.about),
+          Divider(),
+          _tile(context, AppLocalizations.of(context)!.logout, Icons.logout, Type.logout),
+          Divider(),
+        ]
+      )
+    );
+  }
+
+  _getFingerprint() async{
+    SharedPreferences _prefs = await SharedPreferences.getInstance();
+    var configurationService = ConfigurationService(_prefs);
+    _isFingerprintEnabled = configurationService.getBCSFingerprint();
+    Future.delayed(const Duration(milliseconds: 100));
+  }
+
+  void _setFingerprint(bool value) async{
+    SharedPreferences _prefs = await SharedPreferences.getInstance();
+    var configurationService = ConfigurationService(_prefs);
+    configurationService.setBCSFingerprint(value);
+  }
+
+}
+
+ListTile _tile(BuildContext context, String title, IconData icon, Type type) => ListTile(
+  title: Text(title,
+    style: TextStyle(
+      fontWeight: FontWeight.w500,
+      fontSize: 15,
+      color: Color(0xffbb9f89)
+    )
+  ),
+  leading: Icon(
+    icon,
+    color: Color(0xffbb9f89),
+  ),
+  onTap: () {
+    switch(type) {
+      case Type.logout: return logout(context);
+      case Type.changePin: return changePin(context);
+      case Type.touchId:
+        break;
+      case Type.smartContracts: return smartContacts(context);
+      case Type.about: return about(context);
+      case Type.showWIF: return showWIF(context);
+      case Type.showMnemonic: return showMnemonic(context);
+    }
+  } 
+);
+
+logout(BuildContext context) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  var configurationService = ConfigurationService(prefs);
+  configurationService.setBCSPIN(null);
+  configurationService.setBCSWIF(null);
+  configurationService.setBCSMnemonic(null);
+  configurationService.bcsWalletSetupDone(false);
+  Navigator.pushReplacement(context,
+    MaterialPageRoute(builder: (BuildContext ctx) => IntroPage())
+  );
+}
+
+changePin(BuildContext context) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  var configurationService = ConfigurationService(prefs);
+  configurationService.setBCSPIN(null);
+  Navigator.pushReplacement(context,
+    MaterialPageRoute(builder: (BuildContext ctx) => ScreenLockPage())
+  );
+}
+
+smartContacts(BuildContext context) async {
+  Navigator.push(context,
+    MaterialPageRoute(builder: (BuildContext ctx) => SmartContractPage())
+  );
+}
+
+about(BuildContext context) async {
+  Navigator.push(context,
+    MaterialPageRoute(builder: (BuildContext ctx) => AboutPage())
+  );
+}
+
+showWIF(BuildContext context) async {
+  final bool result = await Navigator.push(
+    context,
+    MaterialPageRoute(builder: (context) => ScreenLockPage())
+  );
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  var configurationService = ConfigurationService(prefs);
+  String? wif = configurationService.getBCSWIF();
+
+  if (result == true) 
+    showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.yourWif),
+        content: InkWell(
+          child: Text(
+            wif.toString(),
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(new ClipboardData(text: '$wif'));
+              final snackBar = SnackBar(
+                content: Text(AppLocalizations.of(context)!.copied),
+                action: SnackBarAction(
+                  label: AppLocalizations.of(context)!.undo,
+                  textColor: Color(0xffbb9f89),
+                  onPressed: () {},
+                ),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            },  
+            child: Text(AppLocalizations.of(context)!.copy, style: TextStyle(color: Color(0xffbb9f89)),),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, 'OK');
+            },  
+            child: const Text('OK', style: TextStyle(color: Color(0xffbb9f89)),),
+          ),
+        ],
+      ),
+    ); 
+
+}
+
+
+showMnemonic(BuildContext context) async {
+  bool result = false;
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  var configurationService = ConfigurationService(prefs);
+  String? mnemonic = configurationService.getBCSMnemonic();
+
+  if (mnemonic != null && mnemonic != '')
+    result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ScreenLockPage())
+    );
+  else {
+    showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.error),
+        content: InkWell(
+          child: Text(AppLocalizations.of(context)!.cannotShowMnemonic),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, 'OK');
+            },  
+            child: const Text('OK', style: TextStyle(color: Color(0xffbb9f89))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  if (result == true) 
+    showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.yourMnemonic),
+        content: InkWell(
+          child: Text(
+            mnemonic.toString(),
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(new ClipboardData(text: '$mnemonic'));
+              final snackBar = SnackBar(
+                content: Text(AppLocalizations.of(context)!.copied),
+                action: SnackBarAction(
+                  label: AppLocalizations.of(context)!.undo,
+                  textColor: Color(0xffbb9f89),
+                  onPressed: () {},
+                ),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            },  
+            child: Text(AppLocalizations.of(context)!.copy, style: TextStyle(color: Color(0xffbb9f89)),),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, 'OK');
+            },  
+            child: const Text('OK', style: TextStyle(color: Color(0xffbb9f89)),),
+          ),
+        ],
+      ),
+    );
+  
+}

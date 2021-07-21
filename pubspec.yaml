@@ -1,0 +1,45 @@
+name: bcs_wallet
+description: BCSChain mobile wallet.
+
+publish_to: 'none' 
+version: 2.0.0+1
+
+environment:
+  sdk: ">=2.12.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  bitcoin_flutter: ^2.0.2
+  http: ^0.13.3
+  shared_preferences: ^2.0.6
+  qr_flutter: ^4.0.0
+  url_launcher: ^6.0.6
+  local_auth: ^1.1.6
+  qr_code_scanner: ^0.5.1
+  flutter_screen_lock: ^4.0.4+1
+  hex: ^0.1.2
+  base58check: ^1.0.1
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.17.0
+  keccak: ^1.0.3
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.8.1
+  flutter_test:
+    sdk: flutter
+
+flutter:
+
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - lib/src/images/bitcoin.png
+
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "lib/src/images/bitcoin.png"
