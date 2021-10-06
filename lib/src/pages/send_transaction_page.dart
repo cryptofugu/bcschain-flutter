@@ -328,7 +328,7 @@ class SendTransactionState extends State<SendTransaction> {
     var configurationService = ConfigurationService(_prefs);
     const transfer = 'a9059cbb';
     final keyPair = ECPair.fromWIF(configurationService.getBCSWIF(), network: CONSTANTS.bcsNetwork);
-    var fee = (_feeValue * CONSTANTS.BCS_DECIMALS).toInt();
+    var fee = (_feeValue * CONSTANTS.BCS_DECIMALS).toInt() + _gasLimitValue.toInt() * _gasPriceValue.toInt();
     var totalValue = 0;
     var value = (double.parse(valueController.text) * pow(10, tokens![index].decimals)).toInt().toRadixString(16).padLeft(64, '0');
     var receiverAddress = HEX.encode(Base58Decoder('123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz').convert(address)).substring(2,42).padLeft(64, '0');

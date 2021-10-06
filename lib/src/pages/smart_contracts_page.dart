@@ -364,7 +364,7 @@ class SmartContractPageState extends State<SmartContractPage> {
     var configurationService = ConfigurationService(_prefs);
     final keyPair = ECPair.fromWIF(configurationService.getBCSWIF(), network: CONSTANTS.bcsNetwork);
     final address = Wallet.fromWIF(configurationService.getBCSWIF(), CONSTANTS.bcsNetwork).address;
-    var fee = (_feeValue * CONSTANTS.BCS_DECIMALS).toInt();
+    var fee = (_feeValue * CONSTANTS.BCS_DECIMALS).toInt() + _gasLimitValue.toInt() * _gasPriceValue.toInt();
     var totalValue = 0;
     List<UTXO> inputs = await selectP2SHUtxos(context, address, 0, fee);
                 
